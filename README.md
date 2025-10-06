@@ -4,7 +4,7 @@
 
 This declarative nature allows to easily make reproducible and granular symlinking, unlike GNU Stow. However, this project does not aims to fully replace GNU Stow, but to give a declarative feature missing from it.
 
-You can also look for a version of this script written in Nim at [neostow-nim](https://github.com/aocoronel/neostow-nim).
+You can also look for a version of this script written in Nim at [aocoronel/neostow-nim](https://github.com/aocoronel/neostow-nim), and also at the C version [aocoronel/neostow-c](https://github.com/aocoronel/neostow-nim).
 
 ## Features
 
@@ -16,7 +16,7 @@ You can also look for a version of this script written in Nim at [neostow-nim](h
 ## Installation
 
 ```bash
-git clone https://github.com/aocoronel/neostow.git
+git clone https://github.com/aocoronel/neostow-sh.git
 chmod +x neostow/src/neostow
 sudo cp neostow/src/neostow /usr/local/bin/
 ```
@@ -25,7 +25,7 @@ sudo cp neostow/src/neostow /usr/local/bin/
 
 `neostow` reads from a `.neostow` file in the current directory to determine which symlinks to create. The `.neostow` file should contain lines in the following format: `source=destination`.
 
-See the manpage for more details.
+See the manpage(1) at `FILES` for more details.
 
 ```
 Neostow
