@@ -127,8 +127,10 @@ read_config() {
   case "$read_line" in
   \#*) return 0 ;;
   *\#*) read_line="${read_line%%#*}" ;;
-  *[!A-Za-z0-9._/@%+=,:-]*) ;;
-  *) return 1 ;;
+  esac
+
+  case "$read_line" in
+  *'||'* | *'&&'* | *';'* | *'<'* | *'>'* | *'|'*) return 1 ;;
   esac
 
   if ! echo "$read_line" | grep -q "="; then
