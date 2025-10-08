@@ -91,7 +91,7 @@ create_links() {
       return 0
     fi
     [ -n "$VERBOSE" ] && rm -v "$file" && return 0
-    [ -z "$VERBOSE" ] && rm "$file" && return 0
+    [ -z "$VERBOSE" ] && rm "$file" 2>/dev/null && return 0
     ;;
   *)
     #shellcheck disable=SC2086
@@ -99,7 +99,8 @@ create_links() {
       echo "$src > $file"
       return 0
     fi
-    ln $ln_flag "$src" "$file" && return 0
+    [ -n "$VERBOSE" ] && ln $ln_flag "$src" "$file" && return 0
+    [ -z "$VERBOSE" ] && ln $ln_flag "$src" "$file" 2>/dev/null && return 0
     ;;
   esac
 }
