@@ -11,7 +11,7 @@ COLOR_BLUE="$(tput setaf 87)"
 COLOR_RESET=$(tput sgr0)
 
 version() {
-  printf "0.1.0"
+  printf "1.0.0"
 }
 
 help() {
@@ -86,39 +86,14 @@ create_links() {
       printfc "FATAL" "cannot symlink to root directory"
       exit 1
     }
-    [ -n "$VERBOSE" ] && rm -v "$file" || return 1
-    [ -z "$VERBOSE" ] && rm "$file" || return 1
+    [ -n "$VERBOSE" ] && rm -v "$file" && return 0
+    [ -z "$VERBOSE" ] && rm "$file" && return 0
     ;;
   *)
     #shellcheck disable=SC2086
-    ln $ln_flag "$src" "$file" || return 1
+    ln $ln_flag "$src" "$file" && return 0
     ;;
   esac
-}
-
-readConfig() {
-  working_data=$1
-
-  SOURCE_FILE="$(echo "$working_data" | awk -F '=' '{print $1}')"
-  eval SOURCE_FILE="$DIR/$SOURCE_FILE"
-
-  [ ! -f "$SOURCE_FILE" ] && [ ! -d "$SOURCE_FILE" ] && {
-    if [ -n "$VERBOSE" ]; then
-      echo "Source file or directory $SOURCE_FILE does not exist. Skipping..."
-      exit 1
-    fi
-  }
-
-  DEST_FOLDER=$(echo "$working_data" | awk -F '=' '{print $2}')
-  eval DEST_FOLDER="$DEST_FOLDER"
-
-  case "$DEST_FOLDER" in
-  */) mkdir -p "$DEST_FOLDER" ;;
-  esac
-
-  if ! createLinks; then
-    echo "ERROR: Failed to create link for $SOURCE_FILE" >&2
-  fi
 }
 
 read_config() {
@@ -162,7 +137,9 @@ read_config() {
   FILEPATH="$DEST_FOLDER/$(basename "$SOURCE_FILE")"
   if [ ! -L "$FILEPATH" ]; then
     diff --report-identical-files -u "$FILEPATH" "$SOURCE_FILE"
-    printf "%s %s" "$FILEPATH" "exists and is not a symlink. Overwrite? (y/N): " >/dev/tty
+    [ "$MODE" == "overwrite" ] && msg="Overwrite"
+    [ "$MODE" == "delete" ] && msg="Delete"
+    printf "%s %s %s %s" "$FILEPATH" "exists and is not a symlink." "$msg" "? (y/N): " >/dev/tty
     while true; do
       read -r choice </dev/tty
       case "$choice" in
