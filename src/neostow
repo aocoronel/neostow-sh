@@ -86,11 +86,19 @@ create_links() {
       printfc "FATAL" "cannot symlink to root directory"
       exit 1
     }
+    if [ -n "$DEBUG_MODE" ]; then
+      echo "rm $file"
+      return 0
+    fi
     [ -n "$VERBOSE" ] && rm -v "$file" && return 0
     [ -z "$VERBOSE" ] && rm "$file" && return 0
     ;;
   *)
     #shellcheck disable=SC2086
+    if [ -n "$DEBUG_MODE" ]; then
+      echo "$src > $file"
+      return 0
+    fi
     ln $ln_flag "$src" "$file" && return 0
     ;;
   esac
@@ -170,6 +178,9 @@ main() {
 
 while getopts ":h-Ddof:Vv" opt; do
   case "$opt" in
+  d)
+    DRY_MODE=true
+    ;;
   D)
     DEBUG_MODE=true
     ;;
@@ -226,6 +237,9 @@ edit)
   ;;
 --verbose)
   VERBOSE=true
+  ;;
+--dry)
+  DRY_MODE=true
   ;;
 --version)
   version
