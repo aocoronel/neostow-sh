@@ -16,7 +16,7 @@ version() {
 
 help() {
   cat <<EOF
-neostow | The Declarative GNU Stow
+neostow | the declarative GNU stow
 
 Usage:  neostow [OPTIONS] <COMMAND>
 
