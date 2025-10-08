@@ -1,70 +1,105 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 
 NEOSTOW_FILE="$PWD/.neostow"
 DIR=$(dirname "$NEOSTOW_FILE")
+MODE="create"
 
-BLUE="$(tput setaf 87)"
+COLOR_YELLOW="$(tput setaf 226)"
+COLOR_RED="$(tput setaf 196)"
+COLOR_GREEN="$(tput setaf 82)"
+COLOR_BLUE="$(tput setaf 87)"
+COLOR_RESET=$(tput sgr0)
+
+version() {
+  printf "0.1.0"
+}
 
 help() {
   cat <<EOF
-Neostow
+neostow | The Declarative GNU Stow
 
-Usage: neostow [OPTION] [COMMAND]
-
-Options:
-  -d                   Remove all symlinks
-  -h, --help           Displays this message and exits
-  -p [PARALLEL]        Set parallels
-  -r                   Overwrite symlinks
-  -c [ABSOLUTE_PATH]   Use different configuration file
-  -v                   Enable verbose
+Usage:  neostow [OPTIONS] <COMMAND>
 
 Commands:
-  edit         Edit the .neostow file
+  delete
+          Delete symlinks
+  edit
+          Edit the neostow file
+
+Options:
+  -D, --debug
+          Enables debug verbosity
+  -F, --force
+          Skip prompt dialogs
+  -V, --verbose
+          Enable verbosity
+  -d, --dry
+          Describe potential operations
+  -f, --file <FILE>
+          Load an alternative neostow file
+  -h, --help
+          Displays this message and exits
+  -o, --overwrite
+          Overwrite existing symlinks
+  -v, --version
+          Displays program version
 EOF
 }
 
-text() {
-  color=$1
-  text=$2
-  reset=$(tput sgr0)
-  printf "%s%s%s\n" "${color}" "${text}" "${reset}"
-}
-
-verbose() {
-  text "$BLUE" "$message: $DEST_FOLDER/$file"
-}
-
-createLinks() {
-  file=$(basename "$SOURCE_FILE")
-  message="Created symlink"
-
-  case "$MODE" in
-  overwrite)
-    message="Created symlink"
-    ln -sf "$SOURCE_FILE" "$DEST_FOLDER"
+printfc() {
+  mode=$1
+  case $mode in
+  "ERROR" | "FATAL")
+    color="$COLOR_RED"
     ;;
-  delete)
-    message="Deleted symlink"
-    [ "$DEST_FOLDER/$file" = "/" ] && exit 1
-    rm "$DEST_FOLDER/$file"
+  "WARN")
+    color="$COLOR_YELLOW"
     ;;
-  *)
-    message="Created symlink"
-    ln -s "$SOURCE_FILE" "$DEST_FOLDER"
+  "DEBUG")
+    color="$COLOR_BLUE"
+    ;;
+  "INFO")
+    color="$COLOR_GREEN"
     ;;
   esac
+  text=$2
+  printf "%s[%s]:%s %s\n" "${color}" "${mode}" "${COLOR_RESET}" "${text}"
+}
 
-  val=$?
-  [ "$val" -eq 0 ] && {
-    [ -n "$VERBOSE" ] && verbose
-  }
+create_links() {
+  src=$1
+  dst=$2
+  file=$3
+
+  [ "$dst" = "$src" ] && return 1
+
+  message="create"
+  ln_flag="--symbolic"
+
+  [ -n "$VERBOSE" ] && ln_flag="$ln_flag --verbose"
+  [ "$MODE" = "overwrite" ] && ln_flag="$ln_flag --force"
+
+  case "$MODE" in
+  delete)
+    message="delete"
+    [ "$dst/$file" = "/" ] && {
+      printfc "FATAL" "cannot symlink to root directory"
+      exit 1
+    }
+    [ -n "$VERBOSE" ] && rm -v "$file" || return 1
+    [ -z "$VERBOSE" ] && rm "$file" || return 1
+    ;;
+  *)
+    #shellcheck disable=SC2086
+    ln $ln_flag "$src" "$file" || return 1
+    ;;
+  esac
 }
 
 readConfig() {
   working_data=$1
 
-  SOURCE_FILE="$(awk -F '=' '{print $1}' <<<"$working_data")"
+  SOURCE_FILE="$(echo "$working_data" | awk -F '=' '{print $1}')"
   eval SOURCE_FILE="$DIR/$SOURCE_FILE"
 
   [ ! -f "$SOURCE_FILE" ] && [ ! -d "$SOURCE_FILE" ] && {
@@ -74,61 +109,110 @@ readConfig() {
     fi
   }
 
-  DEST_FOLDER=$(awk -F '=' '{print $2}' <<<"$working_data")
+  DEST_FOLDER=$(echo "$working_data" | awk -F '=' '{print $2}')
   eval DEST_FOLDER="$DEST_FOLDER"
 
-  [[ "$DEST_FOLDER" = */ ]] && mkdir -p "$DEST_FOLDER"
+  case "$DEST_FOLDER" in
+  */) mkdir -p "$DEST_FOLDER" ;;
+  esac
 
   if ! createLinks; then
     echo "ERROR: Failed to create link for $SOURCE_FILE" >&2
   fi
 }
 
-main() {
-  parallels=${parallels:-20}
+read_config() {
+  read_line="$1"
 
-  cat "$NEOSTOW_FILE" | while IFS= read -r line; do
-    jobs_running=$(jobs -p | wc -l)
+  case "$read_line" in
+  \#*) return 0 ;;
+  *\#*) read_line="${read_line%%#*}" ;;
+  *[!A-Za-z0-9._/@%+=,:-]*) ;;
+  *) return 1 ;;
+  esac
 
-    while [ "$jobs_running" -ge "$parallels" ]; do
-      wait -n
-      jobs_running=$(jobs -p | wc -l)
+  if ! echo "$read_line" | grep -q "="; then
+    return 1
+  fi
+
+  SOURCE_FILE="$(echo "$read_line" | awk -F '=' '{print $1}')"
+  [ -n "$DEBUG_MODE" ] && printfc DEBUG "@eval SOURCE_FILE=$DIR/$SOURCE_FILE"
+  eval SOURCE_FILE="$DIR/$SOURCE_FILE"
+  [ -n "$DEBUG_MODE" ] && {
+    printfc "DEBUG" "Source file: $SOURCE_FILE"
+  }
+
+  [ ! -f "$SOURCE_FILE" ] && [ ! -d "$SOURCE_FILE" ] && {
+    [ -n "$VERBOSE" ] && {
+      echo "Source file/directory $SOURCE_FILE does not exist."
+    }
+    return 1
+  }
+
+  [ -n "$DEBUG_MODE" ] && printfc DEBUG "@eval DEST_FOLDER=$DEST_FOLDER"
+  DEST_FOLDER=$(echo "$read_line" | awk -F '=' '{print $2}')
+  eval DEST_FOLDER="$DEST_FOLDER"
+  [ -z "$DEST_FOLDER" ] && return 1
+  [ -n "$DEBUG_MODE" ] && {
+    printfc "DEBUG" "Destination: $DEST_FOLDER"
+  }
+
+  FILEPATH="$DEST_FOLDER/$(basename "$SOURCE_FILE")"
+  if [ ! -L "$FILEPATH" ]; then
+    diff --report-identical-files -u "$FILEPATH" "$SOURCE_FILE"
+    printf "%s %s" "$FILEPATH" "exists and is not a symlink. Overwrite? (y/N): " >/dev/tty
+    while true; do
+      read -r choice </dev/tty
+      case "$choice" in
+      [yY])
+        break
+        ;;
+      [nN])
+        return 0
+        ;;
+      esac
     done
+  fi
 
-    if echo "$line" | grep "#" &>/dev/null; then
-      continue
-    fi
+  case "$DEST_FOLDER" in
+  */) mkdir -p "$DEST_FOLDER" ;;
+  esac
 
-    readConfig "$line" &
-  done
-
-  wait
+  if ! create_links "$SOURCE_FILE" "$DEST_FOLDER" "$FILEPATH"; then
+    printfc "ERROR" "failed to ${message} symlink for $(basename "$SOURCE_FILE")"
+  fi
 }
 
-while getopts ":h-drt:vp:" opt; do
+main() {
+  cat "$NEOSTOW_FILE" | while IFS= read -r line; do
+    read_config "$line"
+  done
+}
+
+while getopts ":h-Ddof:Vv" opt; do
   case "$opt" in
-  r)
-    MODE=overwrite
+  D)
+    DEBUG_MODE=true
     ;;
-  d)
-    MODE=delete
+  o)
+    MODE=overwrite
     ;;
   h)
     help
     exit 0
     ;;
-  p)
-    parallels=$OPTARG
-    ;;
   -)
     break
     ;;
-  t)
+  f)
     NEOSTOW_FILE="$OPTARG"
-    DIR=$(dirname "$NEOSTOW_FILE")
+    ;;
+  V)
+    VERBOSE=true
     ;;
   v)
-    VERBOSE=true
+    version
+    exit 0
     ;;
   ?)
     echo "ERROR: Invalid option '-$OPTARG'" >&2
@@ -140,22 +224,48 @@ done
 shift $((OPTIND - 1))
 
 case "$1" in
+delete)
+  MODE=delete
+  ;;
+edit)
+  [ -z "$EDITOR" ] && EDITOR=vim
+  $EDITOR "$NEOSTOW_FILE"
+  exit 0
+  ;;
 --help)
   help
   exit 0
   ;;
-edit)
-  if [ -z "$EDITOR" ]; then
-    EDITOR=vim
-  fi
-  $EDITOR "$NEOSTOW_FILE"
+--debug)
+  DEBUG_MODE=true
+  ;;
+--overwrite)
+  MODE=overwrite
+  ;;
+--file)
+  NEOSTOW_FILE="$OPTARG"
+  ;;
+--verbose)
+  VERBOSE=true
+  ;;
+--version)
+  version
   exit 0
   ;;
 esac
 
 [ ! -f "$NEOSTOW_FILE" ] && {
-  echo "ERROR: $NEOSTOW_FILE not found"
+  printfc ERROR "$NEOSTOW_FILE not found"
   exit 1
 }
+
+STATE_FILE=~/.local/state/neostow-sh
+if [ ! -f "$STATE_FILE" ]; then
+  mkdir -p "$(dirname "$STATE_FILE")"
+  touch "$STATE_FILE"
+  printfc WARN "neostow-sh does not have robust shell injection protections!"
+  printfc WARN "Do never run this without reviewing the neostow file!"
+  printfc WARN "Do use sudo with caution!"
+fi
 
 main
