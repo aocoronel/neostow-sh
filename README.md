@@ -16,7 +16,7 @@ With `neostow` each file or directory can be symlinked to a specific part of the
 Other versions of Neostow:
 
 - [aocoronel/neostow-c](https://github.com/aocoronel/neostow-c)
-- [aocoronel/neostow-nim](https://github.com/aocoronel/neostow-nim)
+- [aocoronel/neostow-nim](https://github.com/aocoronel/neostow-nim): No longer maintained.
 - [aocoronel/neostow-rs](https://github.com/aocoronel/neostow-rs)
 
 ## Features
@@ -29,10 +29,33 @@ Other versions of Neostow:
 
 ## Installation
 
+Copy the source:
+
 ```bash
 git clone https://github.com/aocoronel/neostow-sh.git
-chmod +x neostow/src/neostow
-sudo cp neostow/src/neostow /usr/local/bin/
+cd neostow-sh
+```
+
+To install `neostow`:
+
+```bash
+chmod +x src/neostow
+sudo cp src/neostow /usr/local/bin/
+```
+
+To install manpages:
+
+```bash
+sudo cp docs/neostow.1 /usr/share/man/man1/
+```
+
+To install completions:
+
+```bash
+# Bash
+sudo cp completions/_neostow.bash /usr/share/bash-completion/completions/
+# Zsh
+sudo cp completions/_neostow.zsh /usr/share/zsh/site-functions
 ```
 
 ## Usage
@@ -87,6 +110,8 @@ scripts/myscript.sh=/home/username/bin/myscript/ # links myscript.sh to ~/bin/my
 myfile=$HOME/Downloads # links myfile to ~/Downloads
 ```
 
+The left side paths are relative to the current directory where the `.neostow` file is found.
+
 ## Integrations
 
 ### [Just](https://github.com/casey/just)
@@ -104,6 +129,10 @@ neostow:
 ```
 
 Then, from any child directory where this `justfile` was placed, you can just run `just neostow`, and it will run the configured recipe.
+
+## Notes
+
+This program was only tested in a Linux machine.
 
 ## License
 
