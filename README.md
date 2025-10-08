@@ -1,6 +1,7 @@
 # The declarative GNU stow
 
-> [!WARNING] `neostow-sh` does not have robust shell injection protections! Do never run this without reviewing the neostow file! Do use sudo with caution!
+> [!WARNING]
+> `neostow-sh` does not have robust shell injection protections! Do never run this without reviewing the neostow file! Do use sudo with caution!
 
 `neostow-sh` is a POSIX compliant shell script, that does only depends on common Linux utils to operate.
 
