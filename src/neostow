@@ -76,7 +76,6 @@ create_links() {
   message="create"
   ln_flag="--symbolic"
 
-  [ -n "$VERBOSE" ] && ln_flag="$ln_flag --verbose"
   [ "$MODE" = "overwrite" ] && ln_flag="$ln_flag --force"
 
   case "$MODE" in
@@ -90,8 +89,14 @@ create_links() {
       echo "rm $file"
       return 0
     fi
-    [ -n "$VERBOSE" ] && rm -v "$file" && return 0
-    [ -z "$VERBOSE" ] && rm "$file" 2>/dev/null && return 0
+    if [ -n "$VERBOSE" ]; then
+      rm "$file" && {
+        echo "Removed $file"
+        return 0
+      }
+    else
+      rm "$file" 2>/dev/null && return 0
+    fi
     ;;
   *)
     #shellcheck disable=SC2086
@@ -99,8 +104,14 @@ create_links() {
       echo "$src > $file"
       return 0
     fi
-    [ -n "$VERBOSE" ] && ln $ln_flag "$src" "$file" && return 0
-    [ -z "$VERBOSE" ] && ln $ln_flag "$src" "$file" 2>/dev/null && return 0
+    if [ -n "$VERBOSE" ]; then
+      ln $ln_flag "$src" "$file" && {
+        printf "%s ==> %s\n" "$src" "$file"
+        return 0
+      }
+    else
+      ln $ln_flag "$src" "$file" 2>/dev/null && return 0
+    fi
     ;;
   esac
 }
@@ -123,6 +134,13 @@ read_config() {
 
   SOURCE_FILE="$(echo "$read_line" | awk -F '=' '{print $1}')"
   [ -n "$DEBUG_MODE" ] && printfc DEBUG "@eval SOURCE_FILE=$DIR/$SOURCE_FILE"
+  [ ! -f "$SOURCE_FILE" ] && [ ! -d "$SOURCE_FILE" ] && [ -z "$SOURCE_FILE" ] && {
+    [ -n "$VERBOSE" ] && {
+      printfc ERROR "$SOURCE_FILE does not exist."
+      return 1
+    }
+  }
+
   eval SOURCE_FILE="$DIR/$SOURCE_FILE"
   [ -n "$DEBUG_MODE" ] && {
     printfc "DEBUG" "Source file: $SOURCE_FILE"
