@@ -4,6 +4,8 @@ NEOSTOW_FILE="$PWD/.neostow"
 DIR=$(dirname "$NEOSTOW_FILE")
 MODE="create"
 
+OPERATIONS=0
+
 COLOR_YELLOW="$(tput setaf 226)"
 COLOR_RED="$(tput setaf 196)"
 COLOR_GREEN="$(tput setaf 82)"
@@ -53,6 +55,7 @@ printfc() {
     color="$COLOR_RED"
     ;;
   "WARN")
+    mode="WARNING"
     color="$COLOR_YELLOW"
     ;;
   "DEBUG")
@@ -178,13 +181,16 @@ read_config() {
 
   if ! create_links "$SOURCE_FILE" "$DEST_FOLDER" "$FILEPATH"; then
     printfc "ERROR" "failed to ${message} symlink for $(basename "$SOURCE_FILE")"
+    return 1
   fi
 }
 
 main() {
-  cat "$NEOSTOW_FILE" | while IFS= read -r line; do
-    read_config "$line"
-  done
+  while IFS= read -r line; do
+    read_config "$line" && OPERATIONS=$((OPERATIONS + 1))
+  done <"$NEOSTOW_FILE"
+
+  echo "$OPERATIONS operations were performed."
 }
 
 while getopts ":h-Ddof:Vv" opt; do
