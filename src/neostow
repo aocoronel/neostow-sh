@@ -86,7 +86,7 @@ create_links() {
       printfc "FATAL" "cannot symlink to root directory"
       exit 1
     }
-    if [ -n "$DEBUG_MODE" ]; then
+    if [ -n "$DRY_MODE" ]; then
       echo "rm $file"
       return 0
     fi
@@ -95,7 +95,7 @@ create_links() {
     ;;
   *)
     #shellcheck disable=SC2086
-    if [ -n "$DEBUG_MODE" ]; then
+    if [ -n "$DRY_MODE" ]; then
       echo "$src > $file"
       return 0
     fi
