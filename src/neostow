@@ -84,19 +84,12 @@ create_links() {
   case "$MODE" in
   delete)
     message="delete"
-    [ "$dst/$file" = "/" ] && {
-      printfc "FATAL" "cannot symlink to root directory"
-      exit 1
-    }
     if [ -n "$DRY_MODE" ]; then
-      echo "rm $file"
-      return 0
+      printfc INFO "Would remove $file"
+      return 10
     fi
     if [ -n "$VERBOSE" ]; then
-      rm "$file" && {
-        echo "Removed $file"
-        return 0
-      }
+      rm "$file" && return 0
     else
       rm "$file" 2>/dev/null && return 0
     fi
@@ -105,7 +98,7 @@ create_links() {
     #shellcheck disable=SC2086
     if [ -n "$DRY_MODE" ]; then
       echo "$src > $file"
-      return 0
+      return 10
     fi
     if [ -n "$VERBOSE" ]; then
       ln $ln_flag "$src" "$file" && {
@@ -117,13 +110,14 @@ create_links() {
     fi
     ;;
   esac
+  return 1
 }
 
 read_config() {
   read_line="$1"
 
   case "$read_line" in
-  \#*) return 0 ;;
+  \#*) return 1 ;;
   *\#*) read_line="${read_line%%#*}" ;;
   esac
 
@@ -179,15 +173,27 @@ read_config() {
   */) mkdir -p "$DEST_FOLDER" ;;
   esac
 
-  if ! create_links "$SOURCE_FILE" "$DEST_FOLDER" "$FILEPATH"; then
+  create_links "$SOURCE_FILE" "$DEST_FOLDER" "$FILEPATH"
+  val=$?
+  case "$val" in
+  0)
+    return 0
+    ;;
+  10)
+    return 10
+    ;;
+  *)
     printfc "ERROR" "failed to ${message} symlink for $(basename "$SOURCE_FILE")"
     return 1
-  fi
+    ;;
+  esac
 }
 
 main() {
   while IFS= read -r line; do
-    read_config "$line" && OPERATIONS=$((OPERATIONS + 1))
+    read_config "$line"
+    val=$?
+    [ "$val" = 0 ] && OPERATIONS=$((OPERATIONS + 1))
   done <"$NEOSTOW_FILE"
 
   echo "$OPERATIONS operations were performed."
