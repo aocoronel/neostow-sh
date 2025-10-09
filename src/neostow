@@ -124,13 +124,7 @@ read_config() {
   *\#*) read_line="${read_line%%#*}" ;;
   esac
 
-  case "$read_line" in
-  *'||'* | *'&&'* | *';'* | *'<'* | *'>'* | *'|'*) return 1 ;;
-  esac
-
-  if ! echo "$read_line" | grep -q "="; then
-    return 1
-  fi
+  echo "$read_line" | grep -q "=" || return 1
 
   SOURCE_FILE="$(echo "$read_line" | awk -F '=' '{print $1}')"
   [ -n "$DEBUG_MODE" ] && printfc DEBUG "@eval SOURCE_FILE=$DIR/$SOURCE_FILE"
@@ -141,31 +135,29 @@ read_config() {
     }
   }
 
+  echo "$SOURCE_FILE" | grep -q "[|<>&;]" && return 1
   eval SOURCE_FILE="$DIR/$SOURCE_FILE"
+
   [ -n "$DEBUG_MODE" ] && {
     printfc "DEBUG" "Source file: $SOURCE_FILE"
   }
 
-  [ ! -f "$SOURCE_FILE" ] && [ ! -d "$SOURCE_FILE" ] && {
-    [ -n "$VERBOSE" ] && {
-      echo "Source file/directory $SOURCE_FILE does not exist."
-    }
-    return 1
-  }
-
   [ -n "$DEBUG_MODE" ] && printfc DEBUG "@eval DEST_FOLDER=$DEST_FOLDER"
   DEST_FOLDER=$(echo "$read_line" | awk -F '=' '{print $2}')
+
+  echo "$DEST_FOLDER" | grep -q "[|<>&;]" && return 1
   eval DEST_FOLDER="$DEST_FOLDER"
+
   [ -z "$DEST_FOLDER" ] && return 1
   [ -n "$DEBUG_MODE" ] && {
     printfc "DEBUG" "Destination: $DEST_FOLDER"
   }
 
   FILEPATH="$DEST_FOLDER/$(basename "$SOURCE_FILE")"
-  if [ ! -L "$FILEPATH" ]; then
+  if [ ! -L "$FILEPATH" ] && [ -e "$FILEPATH" ]; then
     diff --report-identical-files -u "$FILEPATH" "$SOURCE_FILE"
-    [ "$MODE" == "overwrite" ] && msg="Overwrite"
-    [ "$MODE" == "delete" ] && msg="Delete"
+    [ "$MODE" = "overwrite" ] && msg="Overwrite"
+    [ "$MODE" = "delete" ] && msg="Delete"
     printf "%s %s %s %s" "$FILEPATH" "exists and is not a symlink." "$msg" "? (y/N): " >/dev/tty
     while true; do
       read -r choice </dev/tty
