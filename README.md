@@ -19,6 +19,20 @@ Other versions of Neostow:
 - [aocoronel/neostow-nim](https://github.com/aocoronel/neostow-nim): No longer maintained.
 - [aocoronel/neostow-rs](https://github.com/aocoronel/neostow-rs)
 
+## Shell Edition
+
+The shell version is written in POSIX to allow maximum compatibility across all shells, and does not depend on extra utilities other than the common Linux utilities such as the `coreutils`.
+
+### Bugs
+
+Currently, there is no known bugs.
+
+### Vulnerabilities
+
+From all the rewrites of `neostow`, the shell version is the most vulnerable to shell injections, since the parsed data from the `.neostow` file can contain malicious data such as `sudo rm -rf --no-preserve-root /`, and many variations with `||`, `&&` or `;`.
+
+Currently the shell version is able to block these tricks, but maybe not all possible attempts.
+
 ## Features
 
 - **Flexible symlink creation**: Create symlinks from any relative source to any destination.
