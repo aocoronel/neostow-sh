@@ -1,6 +1,9 @@
 # The declarative GNU stow
 
 > [!WARNING]
+> This repository has been moved to Codeberg. Find it at [aocoronel/neostow-sh](https://codeberg.org/aocoronel/neostow-sh).
+
+> [!WARNING]
 > `neostow-sh` does not have robust shell injection protections! Do never run this without reviewing the neostow file! Do use sudo with caution!
 
 `neostow-sh` is a POSIX compliant shell script, that does only depends on common Linux utils to operate.
